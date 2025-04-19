@@ -1627,6 +1627,26 @@ void Preferences::setConfirmRemoveTrackerFromAllTorrents(const bool enabled)
     setValue(u"GUI/ConfirmActions/RemoveTrackerFromAllTorrents"_s, enabled);
 }
 
+bool Preferences::sequentialDownloadDefault() const
+{
+    return value(u"Preferences/Advanced/sequentialDownloadDefault"_s, false);
+}
+
+void Preferences::setSequentialDownloadDefault(const bool enabled)
+{
+    setValue(u"Preferences/Advanced/sequentialDownloadDefault"_s, enabled);
+}
+
+bool Preferences::firstLastPiecePriorityDefault() const
+{
+    return value(u"Preferences/Advanced/firstLastPiecePriorityDefault"_s, false);
+}
+
+void Preferences::setFirstLastPiecePriorityDefault(const bool enabled)
+{
+    setValue(u"Preferences/Advanced/firstLastPiecePriorityDefault"_s, enabled);
+}
+
 // Stuff that don't appear in the Options GUI but are saved
 // in the same file.
 
