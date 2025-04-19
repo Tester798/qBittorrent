@@ -453,8 +453,8 @@ void AddNewTorrentDialog::setCurrentContext(const std::shared_ptr<Context> conte
     m_ui->stopConditionComboBox->setEnabled(m_ui->startTorrentCheckBox->isChecked());
     m_ui->contentLayoutComboBox->setCurrentIndex(
             static_cast<int>(addTorrentParams.contentLayout.value_or(session->torrentContentLayout())));
-    m_ui->sequentialCheckBox->setChecked(addTorrentParams.sequential);
-    m_ui->firstLastCheckBox->setChecked(addTorrentParams.firstLastPiecePriority);
+    m_ui->sequentialCheckBox->setChecked(Preferences::instance()->sequentialDownloadDefault());
+    m_ui->firstLastCheckBox->setChecked(Preferences::instance()->firstLastPiecePriorityDefault());
     m_ui->skipCheckingCheckBox->setChecked(addTorrentParams.skipChecking);
     m_ui->tagsLineEdit->setText(Utils::String::joinIntoString(addTorrentParams.tags, u", "_s));
 

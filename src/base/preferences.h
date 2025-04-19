@@ -355,6 +355,10 @@ public:
     bool iconsInMenusEnabled() const;
     void setIconsInMenusEnabled(bool enable);
 #endif // Q_OS_MACOS
+    bool sequentialDownloadDefault() const;
+    void setSequentialDownloadDefault(const bool enabled);
+    bool firstLastPiecePriorityDefault() const;
+    void setFirstLastPiecePriorityDefault(const bool enabled);
     qint64 getTorrentFileSizeLimit() const;
     void setTorrentFileSizeLimit(qint64 value);
     int getBdecodeDepthLimit() const;

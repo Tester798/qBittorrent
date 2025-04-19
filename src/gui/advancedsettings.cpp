@@ -172,6 +172,8 @@ namespace
         PEER_TURNOVER_INTERVAL,
         REQUEST_QUEUE_SIZE,
         DHT_BOOTSTRAP_NODES,
+        SEQUENTIAL_DOWNLOAD_DEFAULT,
+        FIRST_LAST_PIECE_PRIORITY_DEFAULT,
 #if defined(QBT_USES_LIBTORRENT2) && TORRENT_USE_I2P
         I2P_INBOUND_QUANTITY,
         I2P_OUTBOUND_QUANTITY,
@@ -361,6 +363,9 @@ void AdvancedSettings::saveAdvancedSettings() const
 
     pref->setConfirmRemoveAllTags(m_checkBoxConfirmRemoveAllTags.isChecked());
     pref->setConfirmRemoveTrackerFromAllTorrents(m_checkBoxConfirmRemoveTrackerFromAllTorrents.isChecked());
+
+    pref->setSequentialDownloadDefault(m_checkBoxSequentialDownloadDefault.isChecked());
+    pref->setFirstLastPiecePriorityDefault(m_checkBoxFirstLastPiecePriorityDefault.isChecked());
 
     session->setAnnounceToAllTrackers(m_checkBoxAnnounceAllTrackers.isChecked());
     session->setAnnounceToAllTiers(m_checkBoxAnnounceAllTiers.isChecked());
@@ -1001,6 +1006,11 @@ void AdvancedSettings::loadAdvancedSettings()
     addRow(I2P_OUTBOUND_LENGTH, (tr("I2P outbound length") + u' ' + makeLink(u"https://www.libtorrent.org/reference-Settings.html#i2p_outbound_length", u"(?)"))
         , &m_spinBoxI2POutboundLength);
 #endif
+    m_checkBoxSequentialDownloadDefault.setChecked(pref->sequentialDownloadDefault());
+    addRow(SEQUENTIAL_DOWNLOAD_DEFAULT, tr("Download in sequential order by default"), &m_checkBoxSequentialDownloadDefault);
+
+    m_checkBoxFirstLastPiecePriorityDefault.setChecked(pref->firstLastPiecePriorityDefault());
+    addRow(FIRST_LAST_PIECE_PRIORITY_DEFAULT, tr("Download first and last pieces first by default"), &m_checkBoxFirstLastPiecePriorityDefault);
 }
 
 template <typename T>
