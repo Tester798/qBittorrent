@@ -1,6 +1,6 @@
 name: CI - Windows
 
-on: [pull_request, push]
+on: [workflow_dispatch]
 
 permissions: {}
 
@@ -14,17 +14,13 @@ jobs:
     runs-on: ${{ matrix.config.os }}
     permissions:
       actions: write
+      contents: write
 
     strategy:
       fail-fast: false
       matrix:
         libtorrent:
           - version: "2.1.2"
-            boost_major_version: "1"
-            boost_minor_version: "91"
-            boost_patch_version: "0"
-            libt_build_flags: ""
-          - version: "2.0.15"
             boost_major_version: "1"
             boost_minor_version: "91"
             boost_patch_version: "0"
@@ -49,6 +45,17 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
+
+      - name: Generate version
+        id: gen_version
+        run: |
+          $ver = (Select-String -Path ./dist/unix/org.qbittorrent.qBittorrent.metainfo.xml -Pattern '(?<=\<release version=")[0-9.]+' | % { $_.Matches } | % { $_.Value })
+          $gitSha = "${{ github.sha }}".Substring(0, 7)
+          $verNew = "$ver-$gitSha"
+          Write-Host "version=$ver version_new=$verNew"
+          if (-not $ver) { throw "Failed to parse version from metainfo.xml" }
+          "version=$ver" >> $env:GITHUB_OUTPUT
+          "version_new=$verNew" >> $env:GITHUB_OUTPUT
 
       - name: Setup devcmd
         uses: TheMrMilchmann/setup-msvc-dev@v4
@@ -184,8 +191,8 @@ jobs:
           mkdir upload/qBittorrent
           # binaries
           copy build/qbittorrent.exe upload/qBittorrent
-          copy build/qbittorrent.pdb upload/qBittorrent
-          copy dist/windows/qt.conf upload/qBittorrent
+          # copy build/qbittorrent.pdb upload/qBittorrent
+          # copy dist/windows/qt.conf upload/qBittorrent
           # runtimes
           copy "${{ env.Qt_ROOT_DIR }}/bin/Qt6Core.dll" upload/qBittorrent
           copy "${{ env.Qt_ROOT_DIR }}/bin/Qt6Gui.dll" upload/qBittorrent
@@ -222,11 +229,16 @@ jobs:
           mkdir upload/cmake/libtorrent
           copy ${{ env.libtorrent_path }}/build/compile_commands.json upload/cmake/libtorrent
 
+      - name: Archive build artifacts
+        run: |
+          cd upload
+          7z a "qBittorrent-${{ steps.gen_version.outputs.version_new }}_Windows-${{ matrix.config.arch }}_libtorrent-${{ matrix.libtorrent.version }}.zip" "qBittorrent"
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: qBittorrent-CI_Windows-${{ matrix.config.arch }}_libtorrent-${{ matrix.libtorrent.version }}
-          path: upload
+          archive: false
+          path: upload/qBittorrent-*.zip
 
       - name: Install NSIS
         uses: repolevedavaj/install-nsis@65a75ea79c3d1ddde868e98b7f9447e2e623401c # v1.3.0
@@ -241,10 +253,42 @@ jobs:
             /DQBT_DIST_DIR="../../upload/qBittorrent" `
             /WX `
             dist/windows/qbittorrent.nsi
-          move "dist/windows/qbittorrent_*_setup.exe" "qBittorrent-CI_Windows-${{ matrix.config.arch }}_libtorrent-${{ matrix.libtorrent.version }}-setup.exe"
+          move "dist/windows/qbittorrent_*_setup.exe" "qBittorrent-${{ steps.gen_version.outputs.version_new }}_Windows-${{ matrix.config.arch }}_libtorrent-${{ matrix.libtorrent.version }}_setup.exe"
 
       - name: Upload installer
         uses: actions/upload-artifact@v7
         with:
           archive: false
-          path: qBittorrent-CI_Windows-${{ matrix.config.arch }}_libtorrent-${{ matrix.libtorrent.version }}-setup.exe
+          path: qBittorrent-*_setup.exe
+
+      - name: Create release or upload to existing one
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.gen_version.outputs.version_new }}
+        run: |
+          $files = @(Get-ChildItem "qBittorrent-*_setup.exe", "upload/qBittorrent-*.zip" | ForEach-Object { $_.FullName })
+          if ($files.Count -eq 0) { throw "No release assets found" }
+
+          gh release view $env:TAG *> $null
+          $exists = ($LASTEXITCODE -eq 0)
+
+          if (-not $exists)
+          {
+            Write-Host "Release $env:TAG not found, creating it"
+            gh release create $env:TAG `
+              --title $env:TAG `
+              --target "${{ github.sha }}" `
+              $files
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+
+            # another matrix job probably created it a moment ago
+            Write-Host "Create failed, checking whether the release exists now"
+            gh release view $env:TAG *> $null
+            if ($LASTEXITCODE -ne 0) { throw "Failed to create release $env:TAG" }
+          }
+
+          Write-Host "Release $env:TAG exists, uploading assets to it"
+          gh release upload $env:TAG $files --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Failed to upload assets to release $env:TAG" }
+          exit 0
